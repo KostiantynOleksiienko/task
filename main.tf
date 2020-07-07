@@ -7,6 +7,14 @@ variable "accountId" {
   default = "176065828214"
 }
 
+terraform {
+  backend "s3" {
+    bucket = "kote-terraform-tfstate"
+    key    = "task/terraform.tfstate"
+    region = "us-east-1"
+  }
+}
+
 provider "aws" {
   version = ">= 2.58"
   region = var.myregion
@@ -17,12 +25,6 @@ resource "aws_api_gateway_rest_api" "api" {
   name = "myapi"
 }
 
-#resource "aws_api_gateway_resource" "resource" {
-#  path_part   = "resource"
-#  parent_id   = aws_api_gateway_rest_api.api.root_resource_id
-#  rest_api_id = aws_api_gateway_rest_api.api.id
-#}
-
 resource "aws_api_gateway_method" "method" {
   rest_api_id   = aws_api_gateway_rest_api.api.id
   resource_id   = aws_api_gateway_rest_api.api.root_resource_id
@@ -32,7 +34,6 @@ resource "aws_api_gateway_method" "method" {
 
 resource "aws_api_gateway_integration" "integration" {
   rest_api_id             = aws_api_gateway_rest_api.api.id
-#  resource_id             = aws_api_gateway_resource.resource.id
   resource_id             = aws_api_gateway_rest_api.api.root_resource_id
   http_method             = aws_api_gateway_method.method.http_method
   integration_http_method = "POST"
@@ -71,9 +72,6 @@ resource "aws_lambda_function" "lambda" {
   handler       = "lambda_function.lambda_handler1"
   runtime       = "python2.7"
 
-  # The filebase64sha256() function is available in Terraform 0.11.12 and later
-  # For Terraform 0.11.11 and earlier, use the base64sha256() function and the file() function:
-  # source_code_hash = "${base64sha256(file("lambda.zip"))}"
   source_code_hash = filebase64sha256("lambda.zip")
 }
 
@@ -99,6 +97,10 @@ POLICY
 
 }
 
-output "invoke_url" {
+output "deploy_invoke_url" {
+  value = aws_api_gateway_deployment.dev.invoke_url
+}
+
+output "stage_invoke_url" {
   value = aws_api_gateway_stage.prod.invoke_url
 }
